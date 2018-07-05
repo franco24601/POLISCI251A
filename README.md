@@ -1,4 +1,4 @@
-# POLISCI251A
+# POLISCI 251A
 Files for "Introduction to Machine Learning for Social Scientists" (POLISCI251A)
 given at Stanford University during the summer of 2018.
 
@@ -6,3 +6,5 @@ This course introduces techniques to collect, analyze, and utilize large collect
 
 **Credits:** The original version of the course was created by Justin Grimmer. Rochelle Terman developed a second version. 
 Many thanks to both of them.
+
+**Materials under development and subject to change**
