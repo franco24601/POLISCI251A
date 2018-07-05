@@ -1,0 +1,280 @@
+---
+title: "POLISCI 251A Homework 2"
+author: "YOUR NAME HERE"
+date: "June 26, 2018"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+**Section: Write the name of your TA here**
+
+**Collaborators: If you worked with someone in this assignment, write their names here**
+
+#**Due: Wed July 11th at 1:30pm**
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+This assignment will analyze vote returns for California House elections and vote choice in a presidential election. The learning goals for this homework are:
+
+- Review how to download and explore data in R
+- Have a better understanding of the concept of correlation
+- Create your own linear models 
+- Use those models to calculate predictions
+- Have a better understanding of the applications of these models 
+
+
+Our specific goal in this exercise is to calculate the probability that a Democratic candidate wins a House seat in a ``swing district": one where the support for Democratic and Republican candidates is about equal and the incumbent is a Democrat.  
+
+# 1 Preliminaries: Download data and explore variables (5 points)
+
+In Homework 1 you loaded the data set `ca2006.csv` from your computer into R. Let's do that again. Remember, `ca2006` is a slightly modified version of the 2006 House election return data from the PSCL library.
+
+The data set contains the following variables:
+
+- `district`: California Congressional district 
+- `prop_d`: proportion of votes for the Democratic candidate for the House election
+- `dem_pres_2004`: proportion of two-party presidential vote for Democratic candidate in 2004 in Congressional district
+- `dem_pres_2000`: proportion of two-party presidential vote for Democratic candidate in 2000 in Congressional district
+- `dem_inc`: An indicator equal to 1 if the Democrat is the incumbent
+- `contested`: An indicator equal to 1 if the election is contested
+- `open`:  An indicator equal to 1 if the election is open
+
+```{r}
+### Start with a clean environment
+rm(list=ls())
+
+####  Load the 'foreign' library
+library(foreign)
+
+# set working directory to the folder where you stored your dataset
+#setwd("YOUR PATH")
+
+# Now, we can dowload the data.
+# Create an object called 'ca' containing the dataset 'ca2006.csv'
+#ca <- read.csv("ca2006.csv") 
+
+```
+
+
+## 1.1. 
+
+Explore the structure of the data using the function 'str()'
+
+```{r}
+# Uncomment and run this
+#str(ca)
+```
+
+## 1.2. 
+
+Finally, you can run a summary by using the function 'summary()'. Display the summary for 'ca'
+
+```{r}
+# Uncomment and run this
+#summary(ca)
+```
+
+
+### 1.3. (5 points)
+
+- What is the mean proportion of votes for a democratic candidate?
+
+**Answer**
+
+
+- What percentage of districts are contested?
+
+**Answer**
+
+
+- Calculate the difference between the median proportion of the two-party presidential vote for the Democratic candidate in Congressional district in 2000 and 2004 (You can do this by hand or with code)
+
+**Answer**
+
+# 2. Correlation (25 points)
+
+In class we studied the Pearson product-moment correlation coefficient as a measure of dependence between variables. The formula for the population is:
+
+$$\rho_{X,Y}=Corr(X,Y)=\dfrac{Cov(X,Y)}{\sigma_X *\sigma_Y} = \dfrac{E[(X-\mu_X)*(Y -\mu_Y)]}{\sigma_X *\sigma_Y}$$
+where E is the expected value operator, *cov* means covariance, $\sigma$ are the standard deviations, $\mu$ the mean expected values for each variable, and *corr* is a widely used alternative notation for the correlation coefficient.
+
+Let's study the formula for a specific sample. We can write it as:
+
+$$r_{X,Y}= \dfrac{\sum_{i=1}^N{(x_i -\bar{x})*(y_i -\bar{y})}}{\sqrt{(\sum_{i=1}^N(x_i -\bar{x})^2 *\sum_{i=1}^N(y_i -\bar{y})^2)}}$$
+
+Here:
+
+- x and y refer to vectors of variables. 
+
+- $\bar{x}$ and $\bar{y}$ refer to the means of x and y respectively.
+
+Using the function 'cor()' calculate the correlation matrix between the variables inside 'ca'
+
+## 2.1. (5 points)
+
+```{r}
+## YOUR CODE HERE
+
+```
+
+Note that the diagonal elements are 1. This only represent the correlation of each variable with itself. 
+
+## 2.2. Your own correlation (20 points)
+
+Now, let's calculate the correlation between 'dem_pres_2004' and 'dem_pres_2000' (0.9812588) by hand:
+
+```{r}
+# 1. Create an object containing the mean for dem_pres_2000
+## YOUR CODE HERE
+
+### Now, create an object with the mean for dem_pres_2004
+## YOUR CODE HERE
+
+
+# 2. Now, let's calculate the numerator. In this case, the covariance.
+### First, create an object that contains a vector of the diference between dem_pres_2000 and its mean
+
+### Second, create an object that contains a vector of the diference between dem_pres_2004 and its mean
+
+### Finally, sum the multiplication of these two vectors (this is the covariance)
+
+
+# 3.The next step is to calculate the denominator.
+### Using the object containing a vector of the diference between dem_pres_2000 and its mean
+### create another object that elevates this values to the power of 2
+
+### Using the object containing a vector of the diference between dem_pres_2004 and its mean
+### create another object that elevates this values to the power of 2
+
+### Create and object called sdx that contains the multiplication of the sum of these two vectors
+
+
+# 4. Finally, print the division of the covariance between the square root of sdx
+## Hit: The function to obatin the square root is sqrt()
+## Corroborate that your result is exactly 0.9812588
+
+```
+
+
+# 3. Plot (10 points)
+
+Create a plot of the proportion of votes for the Democratic candidate (x axis), against the proportion of the two-party vote for the Democratic presidential candidate in 2004 (John Kerry) in the district. Be sure to clearly label the axes and provide an informative title for the plot *Hint: you can create a title with the argument 'main'*
+
+```{r}
+## YOUR CODE HERE
+
+
+```
+
+# 4. Regression  (25 points)
+
+## 4.1 (15 points)
+
+Using the function 'lm()', regress the proportion of votes for the Democratic candidate, and use the proportion of the two-party vote for the Democratic presidential candidate in 2004 in the district as the predictor variable. Print the results using the function 'summary()'.
+
+```{r}
+## YOUR CODE HERE
+
+## Print the results
+
+```
+
+- Write the value for the intercept of this model:
+**Answer**
+
+- Write the value for the slope for dem_pres_2004 of this model:
+**Answer**
+
+- According to the sign of the slope, how would you describe the relationship between the two variables?
+**Answer**
+
+
+## 4.2 (10 Points)
+
+Now, add the bivariate regression to the plot using the function 'abline()'
+
+```{r}
+## YOUR CODE HERE
+
+
+```
+
+# 5 Cost function and predict (25 points)
+
+## 5.1 Predict (5 points)
+
+Using the 'predict()' function create a vector of predicted values.
+
+```{r}
+## YOUR CODE HERE
+
+
+```
+
+
+## 5.2 Cost function (5 points)
+
+Now, let's calculate the following cost function:
+
+$$ SSE = \sum_{i=1}^N{(Y_i -\hat{Y_i})^2}$$
+
+This cost function is called sum of squared errors (SSE). Remember that the errors are the difference between predicted and observed values. Calculate the SSE for your model. 
+
+```{r}
+## YOUR CODE HERE
+
+## Print your result
+
+```
+
+## 5.3 Create your own function (15 points)
+
+Using the bivariate regression and a function you have written yourself (do not use `predict()`!), report the expected vote share for the Democratic candidate if dem pres 2004 = 0.5.
+
+```{r}
+## YOUR CODE HERE
+
+
+
+### Report the expected vote  for dem_pres=0.5
+
+```
+
+Briefly, discuss the difference between this prediction and the ones you obtained using the 'predict()' function. *Hint: Remember our discussion about in-sample and out-of-sample predictions* 
+
+**Answer**
+
+
+Use your function to calculate report the expected vote share for the Democratic candidate if dem pres 2004 = 1.5.
+
+```{r}
+## YOUR answer here
+
+```
+
+Briefly, discuss the problem with this prediction and the limitations of the linear model. 
+
+**Answer**
+
+
+
+# 6. Discussion  (10 points)
+
+Read the following two articles:
+
+- How I Acted Like A Pundit And Screwed Up On Donald Trump (by Nate Silver). Available here:
+https://fivethirtyeight.com/features/how-i-acted-like-a-pundit-and-screwed-up-on-donald-trump/
+
+And
+
+- Abramowitz, A. (2016). Will time for change mean time for Trump? PS: Political Science & Politics, 49(4), 659-660. Available via Canvas. 
+
+Write a short essay of no more than 500 words answering the following questions. Why do you think many statistical models failed to predict Trump's victory? Also consider that some models were actually able to predict his victory. Were these models more reliable or were they only obtaining the correct prediction by chance? Why do you think this? *Note: Be careful to stay within the word limit*
+
+
