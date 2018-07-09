@@ -1,0 +1,238 @@
+---
+title: "Interactive Code Lecture 3"
+author: "POLISCI 251A Introduction to Machine Learning"
+date: "7/2/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+### Let's start with an clean environment
+rm(list=ls())
+```
+
+
+## 1. Relating variables 
+
+###1.1 
+
+In this session we are going to introduce two new functions used to generate random numbers. 
+-'set.seed()' uses a single integer argument to set a seed in your computer that will allow you to replicate a random number generator. 
+-The second function is an example of random number generator from an specific distribution, in this case, the Normal distribution. 
+In this chunk you are going to create two vectors of 100 numbers from a Normal distribution with mean 0 and standard deviation 1. *Hint: Again, always looking to the help window first is always advisable*
+
+```{r}
+# First, let's set the seed to 124
+# YOUR CODE HERE
+set.seed(124)
+# Create my_x using rnorm()
+# YOUR CODE HERE
+my_x <- rnorm(100, mean=0, sd=1)
+# Create my_y
+# YOUR CODE HERE
+my_y <- rnorm(100 ,mean=0, sd=1)
+
+```
+
+Take a look to the distribution of these numbers by creating a histogram of 'my_'x using the function 'hist()'.
+
+```{r}
+# YOUR CODE HERE
+hist(my_x, breaks = 10)
+```
+
+
+Now, let's plot 'my_x' against 'my_y' using the function 'plot()'. In this occasion we also are going to include some additional arguments to make a nicer plot. In particular, let's specify 'pch=20' to modify the default points and  name the axis as 'X' and 'Y'. Take a look to the help window for this function first. 
+
+```{r}
+# YOUR CODE HERE
+plot(my_x, my_y,pch = 20, xlab= 'X', ylab = 'Y')
+```
+
+### 1.2 Correlation
+
+To measure the dependence between variables there are several measures, the most common is the Pearson product-moment correlation coefficient. 
+
+$$\rho_{X,Y}=Corr(X,Y)=\dfrac{Cov(X,Y)}{\sigma_X \sigma_Y} = \dfrac{E[(X-\mu_X)(Y -\mu_Y)]}{\sigma_X \sigma_Y}$$
+where E is the expected value operator, *cov* means covariance, $\sigma$ are the standard deviations, $\mu$ the mean expected values for each variable, and *corr* is a widely used alternative notation for the correlation coefficient.
+
+This value goes from -1 to 1. The Pearson correlation is 1 in the case of a perfect direct (increasing) linear relationship (correlation), −1 in the case of a perfect decreasing (inverse) linear relationship. If the correlation coefficient is 0 then we say that the two variables are independent. 
+
+
+Using the function 'cor()' calculate the correlation between your variables. 
+
+```{r}
+# YOUR CODE HERE
+cor(my_x, my_y)
+```
+
+We can see that the correlation is quite low. This is not surprising since we created these two variables independently. 
+
+### 1.3 Creating Correlated Variables
+
+The next step is to create two variables that are not independent. To do so, we are going to use a correlation of 0.7. Follow the code to create two correlated variables. 
+
+
+```{r}
+# First install the MASS package and get the library
+#install.packages("MASS")
+library(MASS)
+ 
+# We will use the command mvrnorm to draw a matrix of variables
+ 
+# Let's keep it simple, 
+mu <- rep(0,2) ## Mean 0 for both variables
+Sigma <- matrix(.7, nrow=2, ncol=2) + diag(2)*.3 ## Correlation matrix
+
+set.seed(124)
+rawvars <- mvrnorm(n=100, mu=mu, Sigma=Sigma)
+
+```
+
+Take a look to the correlation between these variables:
+```{r}
+# YOUR CODE HERE
+
+```
+
+Wait! The correlation is not exactly 0.7. Why this might be happening?
+
+**Answer:**
+These variables were sampled from a multivariate normal distribution, so they only represent a larger population. We should expect that a larger sample would represent the population better and thus show a correlation closer to 0.7. 
+
+Now, plot your two variables 
+
+```{r}
+# YOUR CODE HERE
+plot(rawvars,pch = 20, xlab= 'X', ylab = 'Y')
+```
+
+
+**STOP!**
+
+
+## 2. Setting up the time for a change model
+
+
+The time-for-change model, developed by Alan Abramowitz, predicts the two-party popular vote based on the state of the economy, the incumbent’s popularity, and the time the incumbent president has been in office.
+
+### 2.1
+
+Download and create in object from the .csv file ``TimeChange.csv" into your computer. What class is the object you just created?
+
+```{r}
+# set your working directory
+# YOUR CODE HERE
+setwd('C://Users/Edgar/Dropbox/PhD/5_year/summer/ML_class/Lectures/Lecture3')
+# Create an object called 'elect' using the read.csv function
+# YOUR CODE HERE
+elect<- read.csv('TimeChange.csv')
+# Use the function class() 
+# YOUR CODE HERE
+class(elect)
+```
+
+### 2.2
+
+Print the dimensions of the matrix and the column names using the 'dim()' function and the 'colnames()' function.
+
+```{r}
+# YOUR CODE HERE
+dim(elect)
+colnames(elect)
+```
+
+### 2.3
+
+Provide Summary Statistics for each variable in the data set.
+
+```{r}
+# YOUR CODE HERE
+summary(elect)
+```
+
+**STOP!**
+
+
+## 3. Simple Regression
+
+### 3.1 
+
+Our first endeavor will be to predict IncumbentVoteShare with Incumbent_Net_Approval.
+
+Create a plot of IncumbentVoteShare against Incumbent_Net_Approval. 
+```{r}
+# YOUR CODE HERE
+plot(elect$IncumbentVoteShare ~ elect$Incumbent_Net_Approval, pch = 20, xlab = 'Net Approval', ylab = 'Incumbent Vote Share') 
+```
+
+### 3.2
+
+Create an object called 'mod' that contains the regression of `IncumbentVoteShare` against `Incumbent_Net_Approval`. The function to create a linear regression works as follows: lm(y~x, data='your_dataset'). Here, 'y' stands for the variable we want to predict (dependent variable) and 'x' for the predictor(s). This function produces the coefficients for the linear model. 
+
+```{r}
+## YOUR CODE HERE
+mod <- lm(IncumbentVoteShare ~ Incumbent_Net_Approval, data = elect)
+## Now, use the function summarize to observe the results
+summary(mod)
+```
+
+### 3.3
+
+Include a regression line of `IncumbentVoteShare` against `Incumbent_Net_Approval` on the plot. *Hint: abline might be useful*
+
+```{r}
+## YOUR CODE HERE
+plot(elect$IncumbentVoteShare ~ elect$Incumbent_Net_Approval, pch = 20, xlab = 'Net Approval', ylab = 'Incumbent Vote Share')
+abline(mod, lwd = 3)
+```
+
+### 3.4 
+
+Now, using the regression object you used to add the line to your plot, check the names that are provided in the `lm` object. Summarize:
+
+1) Fitted Values
+2) Residuals
+
+And store the coefficients in a vector.
+
+```{r}
+## YOUR CODE HERE
+names(mod)
+summary(mod$fitted.values)
+summary(mod$residuals)
+coef <- mod$coefficients 
+```
+
+**STOP!**
+
+## 4. Prediction 
+
+### 4.1
+
+`predict` is an extremely useful function that you've likely worked with before. Today, we're going to write our own function using an `lm` object.
+
+Implement a prediction function that takes as an argument an lm object and a value for net approval.
+
+```{r}
+## YOUR CODE HERE
+lm_pred<- function(obj, indep){
+  coefs<- obj$coefficients  
+  pred<- coefs[1] + coefs[2]*indep
+  return(pred)
+}
+```
+
+### 3.2 
+
+Report the prediction for the following values: -4, 100, -100, 50
+ 
+```{r}
+## YOUR CODE HERE
+lm_pred(mod, c(-4, 100, -100, 50))
+```
+
+
+
+
+
