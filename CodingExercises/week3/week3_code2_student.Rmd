@@ -1,0 +1,219 @@
+---
+title: "Interactive Code Lecture 4 (week 3)"
+author: "POLISCI 251A Introduction to Machine Learning"
+date: "July 10, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+### Let's start with an clean environment
+rm(list=ls())
+```
+
+## 1. Training and test set
+
+We are going to introduce two fundamental concepts for Machine Learning: 
+
+- Training set
+
+- Test set
+
+In short, we use the training set to fit our model and the test set to asses how well fits the data. 
+
+For larger datasets we normally split our data using a sampling approach. 
+
+Let's start creating two correlated variables as we did last class. 
+
+```{r}
+## We need the MASS package
+library(MASS)
+ 
+# Let's keep it simple, 
+mu <- rep(0,2) ## Mean 0 for both variables
+Sigma <- matrix(.7, nrow=2, ncol=2) + diag(2)*.3 ## Correlation matrix
+
+set.seed(124)
+rawvars <- mvrnorm(n=100, mu=mu, Sigma=Sigma)
+```
+
+Now, let's divide our data set into a training and a test set with 80 percent of the observations in the training set. Follow the steps in this chunk. 
+
+```{r}
+## 1. Set your seed
+set.seed(124)
+## 2.Using the function sample() create a vector size 80 with different row numbers
+## Take a look to sample() in the help window
+## as x use the number of raws of rawvars
+## as size use the 80% of the number of raws of rawvars
+## Set replace as false
+train_r <-  sample( nrow(rawvars), size=nrow(rawvars)*.8, replace=F)
+## 3. Now, using this vector and [,] create and object called train
+train <- rawvars[train_r,] 
+## 4. Now, using the complement of this vector and [,] create and object called test
+## Hint: Use - to retrieve the complement
+test <- rawvars[-train_r,]
+```
+
+
+*STOP!*
+
+## 2. Setting up Iraq War Vote dataset
+
+### 2.1
+
+We're going to analyze the Senate's vote on the Iraq war authorization. We'll find this data set in the PSCL package, which is called `pscl` in R.
+
+To get started, we need to install and load the library. Execute the following code to install pscl.
+
+```{r}
+### Clean your environment
+rm(list=ls())
+### Set your working directorry
+
+### Install the 'pscl' package
+#install.packages('pscl')
+```
+
+Now, load the pscl into your R environment.
+
+```{r}
+### Load the pscl library
+library(pscl)
+```
+
+To load the data set, execute the following code.
+
+```{r}
+## Uncomment this
+#data(iraqVote)
+```
+
+Checking the column names of the data set we have:
+- y : The vote on the Iraq war authorization (1= Vote for YES)
+- state.abb : Short name of the senator's state
+- name : senator's name
+- rep : an indicator = TRUE if the senator is a Republican, FALSE if not a Republican
+- state.name : the name of the senator's state
+- gorevote: the share of the two party vote cast for Al Gore in the 2000 election
+
+### 2.2
+
+Let's examine the bivariate relationship between Republicans and their authorization vote. To do this, use the `table` function. The syntax is `table(VAR_ON_ROWS, VAR_ON_COLS)`. How many Republicans voted against the authorization?
+
+```{r}
+## YOUR CODE HERE
+
+```
+
+### 2.3
+
+Using the data set, find the Republican who voted against the authorization. *Hint: Use [] and logical statements*
+```{r}
+## YOUR CODE HERE
+
+```
+
+### 2.4
+
+Subset the data to just Democrats and make a plot of the Iraq authorization vote against the share of the two party vote for Gore. *Hint: check out the subset() function.* 
+
+```{r}
+# subset dems
+## YOUR CODE HERE
+```
+
+Plot the vote for Iraq's war against vote for Gore. 
+What do you notice about Democrats who come from states where Gore performed better? Where Gore performed worse?
+
+```{r}
+# create a scatterplot
+## YOUR CODE HERE
+```
+
+
+
+## 3. Prediction using linear models
+
+### 3.1 
+
+Let's fit a predictive model using a linear probability model. Using a linear regression, regress the vote against rep and gorevote. 
+```{r}
+## YOUR CODE HERE
+
+```
+
+Apply summary to the model
+```{r}
+## YOUR CODE HERE
+
+```
+
+
+### 3.2
+
+Using the regression, calculate predicted probabilities for each of the observations.  
+```{r}
+## YOUR CODE HERE
+# Take the fitted values from the model
+
+# Take a look t the first values using the function head()
+
+```
+
+### 3.3
+
+Summarize the predicted probabilities. What do you notice about the predicted probabilities? (in particular, the maximum and minimum values)
+```{r}
+## YOUR CODE HERE
+
+```
+
+
+*STOP!*
+
+## 4. Logistic regression 
+
+Now, let's work through an example of a logistic regression. We're fitting a simple logistic regression of the vote decision against Republican to do this, we'll use the glm function. Remember:
+
+- glm stands for generalized linear model.
+- y is the dependent variable here
+- rep is the independent variable
+- we specify family = binomial to let glm know that we're interested in a logistic regression
+and just like lm, data is how we specify the data we'll use
+
+The syntax for the logistic regression is then: 'glm(y~x, family=binomial, data=your data)'
+
+```{r}
+## YOUR CODE HERE
+
+```
+
+Apply 'summary' to this model and compare the coefficients with the ones obtained in the linear model. 
+
+```{r}
+## YOUR CODE HERE
+
+```
+
+
+The model produces two predicted probabilities---one for Democrats and one for Republicans
+we can extract those predicted probabilities with the syntax 'model$fitted.values'
+
+```{r}
+## YOUR CODE HERE
+
+```
+
+Summarize the predicted probabilities. What do you notice about the predicted probabilities? (in particular, the maximum and minimum values)
+
+```{r}
+## YOUR CODE HERE
+
+
+```
+
+
+## 5 Survey 
+
+https://stanforduniversity.qualtrics.com/jfe/form/SV_5gq0AnyCFbfDITr
