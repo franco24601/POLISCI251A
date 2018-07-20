@@ -1,0 +1,131 @@
+---
+title: "Interactive Code Lecture 7 (week 4)"
+author: "POLISCI251A"
+date: "July 17, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Intro to loops
+
+In R there are three kinds of loops: `repeat`, `while`, and `for`. Today we are going to introduce for loops. These are used when you know how many times you want the code to repeat. The `for' accepts an iterator variable and a vector. It repeats the loop, giving the iterator each element from the vector in in turn. In general, for loops follow these steps:
+
+1. Define a local variable as iterator and the times the loop is running with `for(i in vector)`. Note that `i` could be any other iterator. 
+
+2. Open `{`
+
+3. Execute your code including your local variable as iterator
+
+4. Close `}`
+
+
+Let's take a look to a simple example:
+
+```{r}
+## Print a message for squared values
+for(i in 1:5){
+  j <- i^2
+  message("Value= ", j )
+}
+```
+
+Which is exactly equivalent to: 
+
+```{r}
+## Print a message for squared values
+for(x in 1:5){
+  x <- x^2
+  message("Value= ", x )
+}
+```
+
+R for loops are particularly flexible in that they are not limited to integers, or even numbers. We can pass character vectors, logical vectors or lists:
+
+```{r}
+for(m in month.name){
+   message("The month of ", m )
+}
+```
+
+Now, create your own loop. First create a vector from 2010 to 2018. Using that vector, inside a loop, print the messages "The year is 2010", "The year is 2011", and so on.
+
+```{r}
+## Create your vector
+years <- c(2010:2018)
+## Loop
+for(y in years){
+   message("The year is ", y)
+}
+
+```
+
+Some times, when we are working with loops is convenient to store our results at each iteration. To do this, we create an empty object before the loop.
+
+For example, let's use a for loop to estimate the average of squaring the result of a roll of a die.
+
+```{r}
+### Define dice sides
+nsides <- 6
+#### Define trials
+ntrials <- 1000
+### Let's create an empty vector to store our results
+## The rep function repeats a value, ntimes. In this case, 
+## just missing values
+trials <- rep(NA, ntrials)
+### Create a for loop that in each trial executes this:
+#  sample(1:nsides,1). So, basically rolls a dice
+#  Hint: run just that code to see what's happening
+#  In each iteration store the result in our object trials
+for( j in 1:ntrials){
+    trials[j] <- sample(1:nsides,1)
+}
+#### Finally, using the object trials now populated with 1000 rolls
+#### caculate the average of squares. 
+mean(trials^2)
+
+```
+
+
+## 2. Leave one cross out validation
+
+Now let's use a for loop to perform a LOOCV. This process is easier to understand when we use quantitative predictors. Let's go back to our time for change model. Get the TimeChange data used in week 2.
+
+```{r}
+### Set your wd
+setwd('C://Users/Edgar/Dropbox/PhD/5_year/summer/ML_class/Lectures/Lecture3')
+# Create an object called 'elect' using the read.csv function
+elect<- read.csv('TimeChange.csv')
+```
+To perform LOOCV we have to fit a model in some training data, in this case n-1, and make a prediction in the excluded observation. Then, we have to calculate the error an store in a vector. For this reason is convenient to create an empty vector first. Let's do this with a simple linear model.  
+
+```{r}
+#### Create an empty vector size nrow(elect)
+errors_loocv <- rep(NA, nrow(elect))
+### Loop over all rows excluding one observation in each interation
+for(i in 1:nrow(elect)){
+  #### Create a temporary training set by excluding row i
+  train <- elect[-i,]
+  ### Create a temprary test set with only row i
+  test <- elect[i,]
+  ### Run a linear model predicting vote share on gdp1, gdp2, net approval and two terms
+  ## Don't forget that your data is train
+  model <- lm(IncumbentVoteShare~ Q1_GDP_Growth+Q2_GDP_Growth+
+                Incumbent_Net_Approval+ Incumbent_Party_Two_Terms, data=train)
+  ## Predict using this model in test
+  pred  <- predict(model, newdata=test)
+  ### Calculate the squared error. Error= vote share for row i minus prediction
+  sqr_error <- (test$IncumbentVoteShare- pred)^2
+  #### Store in the position i of errors_loocv
+  errors_loocv[i]  <- sqr_error
+}
+
+##### Calculate the mean of the test squared errors
+mean(errors_loocv)
+
+
+```
+
+
