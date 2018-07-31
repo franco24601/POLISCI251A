@@ -1,0 +1,259 @@
+---
+title: "Interactive Code Lecture 8 (week 5)"
+author: "POLISCI 251A"
+date: "July 24, 2018"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+## 1. Load data and explore
+
+In homework 3 you worked with the credit claiming dataset from the book *The Impression of Influence* by Grimmer, Westwood, and Messing. Using the same dataset, today we are going to work with a data frame containing the 10 most common words. Follow this code to create such matrix:
+
+```{r, message=F, warning=F}
+#set up
+## Start with a clean environment
+rm(list=ls())
+## Set your workind directory
+setwd("C:/Users/franc/Dropbox/PhD/5_year/summer/ML_class/Homework/HW3/")
+# load data using the function 'load('fileName')'
+load("CreditClaim.RData")
+# separate DTM and labels
+dtm <- as.data.frame(credit_claim$x)
+y <- credit_claim$y
+## Create a vector containing the sum of each column 
+col_sum_dtm <- colSums(dtm)
+## Create a vector called 'common_words' that goes from the most used to the least used word
+common_words<- sort(col_sum_dtm, decreasing = T)
+# sort the dtm with most common words  -- this makes the next part easier.
+dtm_10 <- dtm[,names(common_words)[1:10]]
+```
+
+First, run a logistic model using the function ``glm()`` and store your results in an object called ``model_1``. Then, create an object ``predict_glm`` containing the predicted values. Do not forget to include the argument ``type=response``
+
+```{r, message=F, warning=FALSE}
+# model 1: Use glm and the argument family=binomial to create a logistic model
+model_1<- glm(y ~ ., data = dtm_10 , family = binomial)
+## Predicted values 
+predict_glm <- predict(model_1, type="response")
+```
+
+Now, create a function to classify your predictions. The function should take a vector of predicted probabilities and a threshold, and return a vector of classified values (zeroes and ones).
+
+```{r}
+################
+#  Function to classify predicted probs.
+#################
+my_clas <- function(pred,t){
+        clas <- ifelse(pred>=t,1,0)
+        return(clas)
+}
+
+### Use your function to classify the predictions of model 1 with a threshold of 0.5
+### Store them in the object "clas_glm"
+clas_glm <- my_clas(predict_glm, .5)
+
+```
+
+Then, create a function to calculate the error rate. This function should take a vector of labels and a vector of classified values. Since we are working with a qualitative response the error rate should be:
+$$\dfrac{1}{n}\sum_{i=1}^{n} I(y_i \neq \hat{y_i}) $$
+
+```{r}
+################
+#  Function to classify the error rate
+#################
+err_sum <- function(lab, clas){
+          result <- mean(lab!=clas)
+          return(result)
+}
+
+## Apply your formula for the object y and the object clas_glm
+err_sum(y,clas_glm)
+```
+
+The error rate over the whole sample is around 20\%
+
+## 2. The validation Approach
+
+We explore the use of the validation set approach in order to estimate the test error rates. We begin using the ``sample`` function to split the set of observations into two halves. We refer these observations as the raining set. 
+
+```{r}
+### Let's start with a seed of 1
+set.seed(1)
+train <-  sample( nrow(dtm_10), nrow(dtm_10)/2)
+```
+
+We then use the ``subset`` option in ``glm`` to fit a logistic regression using only the observations corresponding to the training set. 
+
+```{r, message=F, warning=F}
+#### Fit the model on the training data
+model_2<- glm(y ~ ., data = dtm_10 , family = binomial, subset=train)
+### Calcluate the predicting results in the validation set.
+### Note that the -train index below selects only the observations that are not in the training set. 
+predict_glm2 <- predict(model_2, newdata=dtm_10[-train,],  type="response")
+```
+
+Now, apply your classification and error rate function to calculate the error rate of the validation set. 
+
+```{r}
+### YOUR CODE HERE
+clas_glm2 <- my_clas(predict_glm2, .5)
+err_sum(y[-train],clas_glm2)
+```
+
+Using this splits of observations into a training set and a validation set, we find that the validation set error rates for this model is 18.3\%. If we choose a different training set instead, then we will obtain somewhat different errors on the validation set. Repeat these steps with ``set.seed(2)``.
+
+```{r, message=F, warning=F}
+## YOUR CODE HERE
+set.seed(2)
+train     <-  sample(nrow(dtm_10), nrow(dtm_10)/2)
+model_3   <- glm(y ~ ., data = dtm_10 , family = binomial, subset=train)
+predict_glm3 <- predict(model_3, newdata=dtm_10[-train,],  type="response")
+clas_glm3 <- my_clas(predict_glm3, .5)
+err_sum(y[-train],clas_glm3)
+```
+
+Using this splits of observations into a training set and a validation set, we find that the validation set error rates for this model is 22.8\%. This means that our test error estimates are sensitive to the validation set we choose.
+
+
+## 3. Leave one cross out validation
+
+To perform LOOCV we have to fit a model in some training data, in this case n-1, and make a prediction in the excluded observation. Then, we have to calculate the error an store in a vector. For this reason it is convenient to create an empty vector first. Last week we did this for a simple linear model, in this occasion the code is quite similar but we need to add a step to collect the error rates with our functions. Complete the loop below and calculate the error rate for the LOOCV. 
+
+```{r,  message=F, warning=F}
+## Progress bar setting
+#total <- nrow(dtm_10)
+# create progress bar
+#pb <- txtProgressBar(min = 0, max = total, style = 3)
+#### Create an empty vector size nrow(dtm_10)
+errors_loocv <- rep(NA, nrow(dtm_10))
+### Loop over all rows excluding one observation in each interation
+for(i in 1:nrow(dtm_10)){
+  #Sys.sleep(0.1)
+  #### Create a temporary training set by excluding row i
+  train     <- dtm_10[-i,]
+  ### Create temporary label for training
+  y_train   <- y[-i]
+  ### Create a temporary validation set with only row i
+  test <- dtm_10[i,]
+  ### Create temporary label for the validation set with only row i
+  y_test <-  y[i]
+  ### Run a logistic model 
+  ## Don't forget that your data is train
+  model <-  glm(y_train ~ ., family = binomial, data=train)
+  ## Predict using this model in the validation set
+  pred  <- predict(model, newdata=test,  type="response")
+  ### Calculate the classification error. 
+  ## First, classify
+  clas_glm <- my_clas(pred, .5)
+  ## Then calculate the eror 
+  error  <- (clas_glm!=y_test)
+  ## Store in errors_loocv (in position i)
+  errors_loocv[i] <- error
+  # update progress bar
+  #setTxtProgressBar(pb, i)
+}
+
+##### Calculate the mean of the test squared errors (mean of errors_loocv)
+mean(errors_loocv)
+
+```
+
+The LOOCV error rate is $20.45\%$, which is an unbiased estimate of the tests error, since each training contains $n-1 $ observations. 
+
+Alternatively, we can use the ``cv.glm`` function from the ``boot`` library. This function calculates the estimated K-fold cross-validation prediction error for generalized linear models. Let's see how it works
+
+```{r, message=F, warning=F}
+### First, install the package and load the library
+#install.packages("boot")
+library(boot)
+### To run this function we need to integrate the label and the data
+## Do this using the function cbind.data.frame
+dtm_10_df <- cbind.data.frame(y, dtm_10)
+### And re run your model  1 with this data, call it model_1.1
+model_1.1<- glm(y ~ ., data = dtm_10_df , family = binomial)
+
+```
+
+Explore the function ``cv.glm``. Note that the default cost function is the average squared error function which is useful for linear models. However, we have a qualitative response. Let's tweak our error function to the pass it as an argument to the ``cv.glm`` function. 
+
+Create, a function that receives the observed responses and the predicted responses, classifies and then returns the mean test error. In other words, we are integrating our two functions into one. 
+
+```{r,warning=F, message=F}
+####Integrated cost function
+my_cost <- function(r, pi=0 ) { 
+        mean((pi <= 0.5) & r==1 | (pi >= 0.5) & r==0)
+}
+#### Now, we can implement the cv.glm function. 
+## Use these arguments: dtm_10_df, model1, cost and
+## store it into an object called cv.err
+cv.err <- cv.glm(dtm_10_df, model_1 , cost=my_cost)
+```
+
+The function returns several values, but we are actually interested in the first value of delta. Retrieve the delta value using ``cv.err$delta[1]`` and compare it with the error rate you calculated in the loop. It should be the same. 
+
+```{r}
+cv.err$delta[1]
+```
+
+
+## 4.  K-Fold validation
+
+The function can be implemented for k-fold validation by including the K argument. Below use k=10, a common choice for k. Notice that the computation is much shorter. What do you notice about the estimated test error rate?
+
+```{r,warning=F, message=F}
+## YOUR CODE HERE
+## First set a seed
+set.seed(42)
+cv.err_10 <- cv.glm(dtm_10_df, model_1 , cost=my_cost, K=10)
+cv.err_10$delta[1]
+```
+
+Now, use k=5
+
+```{r, warning=F, message=F}
+## YOUR CODE HERE
+set.seed(42)
+cv.err_5 <- cv.glm(dtm_10_df, model_1 , cost=my_cost, K=5)
+cv.err_5$delta[1]
+```
+
+**Challenge**
+
+Using a loop calculate the mean test error using K=10 and K=5. Corroborate that your results with the ones obtained above. 
+
+```{r, warning=F, message=F}
+K<- c(5,10)  # k 5 and 10
+errors_k5_k10 <- rep(NA,length(K))
+n <- nrow(dtm_10_df)
+## loop thorugh K's
+for(v in 1:length(K)){
+  #k <-5
+  k <- K[v]
+  errors_k <- rep(NA,k) ## k different errors 
+  f <- ceiling(n/k)
+  set.seed(42)  ## set seed 
+  group <- sample(rep(1L:k, f), n)  ## assign groups
+  for(i in 1:k){
+    ### Train and test sets. 
+    train <- seq_len(n)[group!=i] ## all obs but those in group i
+    test  <- seq_len(n)[group==i ]  ## obs in group i
+    ## Fit model in train data
+    model <-  glm(y ~ .,  family=binomial, data=dtm_10_df, subset=train)
+    ## Predict using this model in the validation set
+    pred  <- predict(model, newdata=dtm_10_df[test,],  drop=FALSE, type="response")
+    ### Calculate the classification error
+    error <- my_cost(dtm_10_df$y[test], pred)
+    ## Store in errors_loocv (in position i)
+    errors_k[i] <- error
+  }
+  errors_k5_k10[v] <- mean(errors_k)
+}
+### Print mean errors for k5 and k10
+## They might vary a little from the ones used in the cv.glm function due to sampling process
+errors_k5_k10
+
+```
+
