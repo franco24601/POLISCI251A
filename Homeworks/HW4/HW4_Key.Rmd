@@ -1,0 +1,493 @@
+---
+title: "HW4"
+author: "POLISCI 251A"
+date: "July 28, 2018"
+output: html_document
+---
+
+**Section: Write the name of your TA here**
+
+**Collaborators: If you worked with someone in this assignment, write their names here**
+
+**Due: Fri Aug 8th at 11:59pm**
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Fake News!
+
+``Who controls the past controls the future. Who controls the present controls the past.``
+― George Orwell, 1984
+
+In this homework we are going to explore how a machine learning algorithm can be used to differentiate two types of news articles. Our dataset includes a combination of reports from two news websites: Politicus USA and The New York Times. The Politicus USA articles were scraped from the ``Featured News`` section of Politicus between January 1 to January 2017. Politicus USA produces articles with extreme left biased stances and, although uses credible media sources such as Reuters, it is considered to publish misleading reports and omit reporting of information that may damage liberal causes, therefore, some reports may be untrustworthy.  For the purposes of this assignment we'll label these articles as ``Fake``. On the other hand, the New York Times is considered to be one of the most reliable news sources in the US (albeit some would consider it having a left-leaning bias). For the purposes of this assignment we'll label these articles as ``Non fake``. 
+
+The underlying question is if ML algorithms could allow us to predict a predetermined label based on linguistic marks. We might expect, for example, that fake news articles would use some words more than others. For example, Kwon et al. (2013) find that non-rumors were more likely to contain positive emotion related words than rumors. Chua and Banerjee (2016) find that verified facts are more associated with the past tense. In sum, there are a lot of people in Silicon Valley and elsewhere trying to figure out how to identify articles with fake news, this means that you're already part of a community working on a relevant topic.
+
+If you want to read more about this issue I recommend the following (real) articles:
+
+- [Fake news for liberals: misinformation starts to lean left under Trump, The Guardian](https://www.theguardian.com/media/2017/feb/06/liberal-fake-news-shift-trump-standing-rock)
+
+- [The Massacre That Wasn't, and a Turning Point for 'Fake News'](https://www.nytimes.com/2017/02/05/business/the-massacre-that-wasnt-and-a-turning-point-for-fake-news.html)
+
+- [Facebook Mounts Effort to Limit Tide of Fake News](https://www.nytimes.com/2016/12/15/technology/facebook-fake-news.html)
+
+And the following papers:
+
+- [Stance Detection for the Fake News Challenge: Identifying Textual Relationships with Deep Neural Nets](https://web.stanford.edu/class/cs224n/reports/2760230.pdf)
+
+- Dale, R. (2017). NLP in a post-truth world. Natural Language Engineering, 23, 319-324. 
+
+
+# 1. Explore the data
+
+The RData file ``FakeNews`` contains a list called ``challenge`` with two elements:
+
+- term_doc: A dataframe containing the label and the document term matrix.
+
+- articles: A data frame containing the title and complete text of the articles.
+
+
+## 1.1 Load your data (5pts)
+
+First, load your data and get the elements from the list.
+
+```{r}
+rm(list=ls())
+setwd("C://Users/franc/Dropbox/PhD/5_year/summer/ML_class/Homework/HW4/")
+load("FakeNews.RData")
+dtm     <- challenge$term_doc
+articles <- challenge$articles
+```
+
+*What are the dimensions of the document term matrix?*
+
+*How many fake articles has this data?*
+
+```{r}
+# Dimensions
+dim(dtm)
+# Table label
+table(dtm$Fake)
+```
+
+*The document term matrix has 250 observations (articles) and 3000 columns (words). Note that the first column correspond to the label.*
+
+*There are 95 ``fake`` news in this dataset. That is, 38\% of the total articles. *
+
+## 1.2. Divide the data (5pts)
+
+Later we'll use the document term matrix (dtm) as a separate object to run our LASSO model, so it is convenient to separate the label and the dtm beforehand. Remember that glmnet accepts only matrices as x.
+
+```{r}
+dtm1   <- as.matrix(dtm[,2:ncol(dtm)])
+label  <- dtm[,1]
+```
+
+## 1.3. Visualize your data (15 pts)
+
+## 1.3.1 Barplots
+
+Let's obtain the 20 most common words for those documents that are classified as fake news vs those classified as non-fake news. Using these common words for each category create a bar plot for each category (*Use the function barplot() and make sure to adjust the arguments such that all the words are readable in the x axis since your grade also depends on the aestetics of your plot*). What do you notice?
+
+```{r}
+#### Fake
+## Create a vector containing the sum of each column 
+col_sum_fake      <- colSums(dtm1[label==1, ])
+### Sort vector (decreasing=T)
+common_words_fake <- sort(col_sum_fake, decreasing = T)
+## Select first 20
+top_20_fake      <- common_words_fake[1:20]
+#print top 20 common words
+barplot(top_20_fake, main="Fake News", las=2, cex.names = 0.8,
+  	ylab="Number of Counts")
+
+
+#### Non fake
+## Create a vector containing the sum of each column 
+col_sum_non_fake      <- colSums(dtm1[label==0, ])
+### Sort vector (decreasing=T)
+common_words_non_fake <- sort(col_sum_non_fake, decreasing = T)
+## Select first 20
+top_20_non_fake      <- common_words_non_fake[1:20]
+#print top 20 common words
+barplot(top_20_non_fake, main="Real News", las=2, cex.names = 0.8,
+  	ylab="Number of Counts")
+
+```
+
+*Here we notice that the dtm still contains stop words. In fact, the word "the" is the most common word for both articles. For real news the word "mr" is relatively common, this word is related to the editorial style of the NYT. For both sets the word "trump" is also quite common." *
+
+
+## 1.3.2 Wordclouds
+
+Word clouds are useful tools to visualize text and provide some meaningful interpretation. Using the package ``wordcloud`` create a wordcloud for the 100 most common words in the fake news articles and the non-fake news articles (Set random.order=F). Provide and interpretation for these word clouds. 
+
+
+```{r, echo=FALSE}
+library(RColorBrewer)
+library(wordcloud)
+
+# We're about to create a wordcloud. First, we need to download some colors
+pal <- brewer.pal(9, "BuGn")[-(1:4)]
+
+## Word cloud for fake
+wordcloud(words = names(common_words_fake[1:100]), freq = common_words_fake[1:100] ,
+          random.order =F, colors = pal)
+
+## Word cloud for non fake
+wordcloud(words = names(common_words_non_fake[1:100] ), freq = common_words_non_fake[1:100]  ,
+          random.order = F, colors = pal)
+
+```
+
+*This word clouds give us a better sense of the word distribution. In this case, we can see that real news mention trump less often, also, they use other words such as "mr" and "washington". It also seems that past tense verbs are relatively more common. For fake news there are some special characters such as X8217 or X8220. However, given the amount of stop words they are still hard to read.   *
+
+## 1.4. Pre-analysis Qualitative Assesment (10 pts)
+
+Any kind of prediction relies on a good understanding of your data. In this case, this not only implies getting to know which words are used the most but also exploring the articles. It is advisable to read a couple of real and a couple of "alternative" news to understand the nature of the problem. Since articles are quite long it would be difficult to read them in Rstudio,  you can print them in separate text files with a code like this one:
+
+Get one article and it's title:
+`article <- cbind(articles[i,2], articles[i,2])``
+
+Print it in a txt file:
+`write.table(article, file='article.txt' )`
+
+Of course, you might need to do this in a loop and adjust some parameters for ``write.table()``
+
+Reading some articles could help you to answer questions such as: Should we keep or remove stop words (i.e. words like 'is', 'for', 'the', and other common words)? Should we weight some words more than others? Should we include the length of the article as an explanatory variable? etc.
+
+Using the seed 1984 select 5 articles from the set of fake news and 5 from the set of non-fake news. Print them in a separate txt files, that is, one for real and one for fake (*Note that you will submit these csv file along with your Markdown document*). Read each of the articles carefully. Below, write the code you used to retrieve the articles but only print the title of each article.
+
+```{r, warning=F, message=F}
+# sample
+real_articles <- articles[label==0,]
+fake_articles <- articles[label==1,]
+set.seed(1984)
+sample_real <- sample(nrow(real_articles),5, replace=F)
+sample_fake <- sample(nrow(fake_articles),5, replace=F)
+setwd("C://Users/franc/Dropbox/PhD/5_year/summer/ML_class/Homework/HW4/")
+print("Real news")
+## real news
+for(i in sample_real){
+  title   <- levels(real_articles[i,1])[real_articles[i,1]]
+  article <- cbind(i, title, levels(real_articles[i,2])[real_articles[i,2]])
+  write.table(article, file='real.txt', append=T, sep="\n")
+  print(title)
+}
+print("Fake news")
+## fake news
+for(i in sample_fake){
+  title   <- levels(fake_articles[i,1])[fake_articles[i,1]]
+  article <- cbind(i, title, levels(fake_articles[i,2])[fake_articles[i,2]])
+  write.table( article, file='fake.txt', append=T, sep="\n")
+  print(title)
+}
+
+  
+    
+```
+
+*Provide an overall interpretation of these articles. What differences do yo notice? Do they cover different topics? Do they use different language? Do you think is possible to predict the type article by analyzing it`s language, or are they too similar?*
+
+*This small sample of articles shows some differences across topics. Although both of them cover electoral topics, the articles from the NYT tend to have a broader focus (Obama's legacy, health care), whereas the fake news tend to focus on Trump and his potential actions. NYT articles also tend to be longer and better crafted, they tend to refer to individuals as "mr" or "mrs, and to work done by reporters. Fake news are not only shorter, they also have several special characters which are transformed here to numbers."*
+
+```{r}
+## Average length Fake 
+mean(apply(dtm[label==1,],1,sum)) 
+## Average length Real
+mean(apply(dtm[label==0,],1,sum))
+```
+
+
+# 2. LASSO (25 pts)
+
+## 2.1 Logistic regression (5pts)
+
+Using a logistic regression, predict the fake news labels using all the words. What error message do you receive and what do you notice about the coefficients? (*In your final markdown do not print the summary of the results for this regression*)
+
+```{r}
+# fit logistic regression (not run)
+#log.all <- glm(Fake ~ ., data=dtm, family = binomial)
+# glm.fit: algorithm did not converge
+```
+
+
+## 2.2 Lasso model (5pt)
+
+Using the `glmnet` library, fit a logistic LASSO regression and plot the total number of non-zero coefficients at different values of λ. What do you notice?
+
+```{r, warning=F, message=F}
+library(glmnet)
+lasso <- glmnet(x = as.matrix(dtm1), y = label, family='binomial')
+# number of non-zero coefficients
+beta_non_zero <- colSums(lasso$beta != 0)
+plot(beta_non_zero~lasso$lambda, xlab="Lambda", ylab="Non-Zero Coefficients", type="l")
+```
+
+*As lambda increases the number of non-zero coefficients decreases. At some point the lambda penalty is so large such that all of the coefficients are zero (except for the intercept). It should be noticed that when lambda is zero the number of non-zero coefficients is the largest, since this model is equivalent to OLS*
+
+### 2.2.1
+
+We can visualize the coefficients by executing the plot() function and using your model as argument. Provide an interpretation for this plot. 
+
+```{r}
+plot(lasso)
+```
+
+*Again, we can see here that the number of non-zero coefficients is the largest when lambda approaches to zero (since log(0)=-Inf). It should also be noticed that the value of the coefficient changes at each value of lambda, in particular, these are shrunk towards zero at each iteration.*
+
+### 2.2.2 
+
+Print a summary of the glmnet path at each step along the path using the function print and the model as argument. Here, we have 3 columns:
+
+- df: Degrees of freedom,  the number of nonzero coefficients
+- \%Dev: Percentage of the explained deviance
+- Lambda: Associated lambda
+
+Take a look to the relationship between these elements and provide an interpretation for each column. 
+
+```{r}
+print(lasso)
+```
+
+*Here the first column represents the degrees of freedom, that is, the number of non-zero coefficients. The second column represents the percentage of explained deviance, that is, the explanatory power of the model. With zero coefficients the explanatory power is really low. With more coefficients the explanatory power is high but we are potentially over-fitting the model. The third column is the lambda, which determines the number of non-zero coefficients. Higher lambdas mean a smaller number of non-zero coefficients. *
+
+## 2.3  Evaluation with arbitrary λ (5pts)
+
+Obtain the λ in the position 50 and using this λ print the non-zero coefficients sorted from  the largest to the smallest. Provide an interpretation for the number of coefficients and their values. 
+
+```{r}
+a_lambda <- lasso$lambda[50]
+# We can obtain the actual coefficients at one or more ??'s within the range of the sequence:
+coef_lasso <- coef(lasso,s=a_lambda)
+# Let's print the non-zero coefficients
+coef_lasso <- round(coef_lasso[which(coef_lasso[,] !=0),] , 4)
+coef_lasso <- sort(coef_lasso, decreasing=T)
+coef_lasso
+```
+
+*With this lambda there are 19 non-zero coefficients:*
+
+```{r}
+length(coef_lasso)
+```
+*Positive coefficients are those associated with Fake News. In other words, are more likely to appear in Fake News. Negative coefficients are less related with fake news.  *
+
+## 2.3.1
+
+Using the previous λ get the accuracy of the LASSO model, use a threshold of 0.5. How many fake positives/negatives there are?
+
+```{r}
+# formulate predictions with this lambda
+lasso_test <- predict(lasso, newx=as.matrix(dtm1), s = a_lambda, type="response")
+#
+# classify obs using threshold of 0.5
+class_lasso_test <- ifelse(lasso_test>=0.5, 1, 0)
+
+# create confusion matrix
+table(class_lasso_test, label)
+
+# get accuracy score
+(sum(class_lasso_test & label) + sum(!class_lasso_test & !label)) / length(label)
+
+```
+
+## 2.4 Choosing the right λ (10 pts)
+
+## 2.4.1 Calculate different values of accuracy
+
+Using a for loop calculate the value of λ that provides the highest accuracy (Again, use a thershold of 0.5). Plot the calculated accuracies against the diferent values of λ.
+
+```{r}
+# create function for accuracy
+accuracy <- function(predict, true){
+  score <- (sum(predict & true) + sum(!predict & !true)) / length(true)
+  return(score)
+}
+
+# create the predictions for each value of lamda
+pred_lasso <- predict(lasso, newx = as.matrix(dtm1), type="response") 
+
+# convert to classifications
+class_lasso <- ifelse(pred_lasso>=0.5, 1, 0)
+
+# store accuracies
+store_acc <- c()
+for(z in 1:ncol(class_lasso)){
+  predictions <- class_lasso[,z] #get predictors for that lambda value
+  store_acc[z] <- accuracy(predictions, label)
+}
+
+## The lambda that maximizes in sample accuracy is
+lambda_acc <- lasso$lambda[which.max(store_acc)]
+
+
+# plot
+plot(store_acc~lasso$lambda, xlab="Lambda", ylab="Accuracy", type="l") + 
+  abline(v=lambda_acc, lty="dashed", col="red" )
+
+```
+
+## 2.4.2 Best λ
+
+What is the λ that maximizes in-sample accuracy?
+
+```{r}
+## The lambda that maximizes in sample accuracy is
+lambda_acc 
+```
+
+What is the value of this accuracy? How much should we trust this value?
+
+```{r}
+## The value of this accuracy is:
+max(store_acc)
+```
+
+*It seems that we are getting a perfect in-sample fit with this model. We probably should be cautious about this value, since we might be over-fitting our model.  *
+
+## 2.4.3 Interpretation of coefficients
+
+Retrieve the non-zero coefficients for this λ. Print them from the largest to the smallest and provide an interpretation. Remember that that these articles were retrieved during electoral campaigns. Try to give a meaninful interpretation of this words given the context. 
+
+```{r}
+# We can obtain the actual coefficients at one or more ??'s within the range of the sequence:
+coef_lasso <- coef(lasso,s=lambda_acc )
+#coef_lasso 
+# Let's print the non-zero coefficients
+coef_lasso <- round(coef_lasso[which(coef_lasso[,] !=0),] , 4)
+coef_lasso <- sort(coef_lasso, decreasing=T)
+coef_lasso
+```
+
+*In this model the number of coefficients is:*
+```{r}
+length(coef_lasso)
+```
+*Again, the positive coefficients are more related to fake news. However, this model provides more information since we can see words like "koch". Let's remember that the Koch brothers were mayor players during the 2016 election, spending millions of dollars on electoral support. The word "lying"" is also more related to Fake news, thus suggesting a some particular accusatory language. The word "editor" is a better predictor for non-fake news, thus referring to the particular language of the NYT. Interesting, also the word "presidential" which might be referring to some particular concern about the quality of the candidates. *
+
+# 3. Crossvalidation (35 pts)
+
+## 3.1 LOOCV (20 pts)
+
+Using a loop perform leave one out cross validation for the LASSO model, storing the level of accuracy for each value of λ. Print the optimized out-of-sample accuracy and its associated λ. How does the out of sample accuracy compare to the in sample accuracy? What about the λ.
+
+[NOTE: The loop might take a while. ]
+
+```{r}
+# this function inputs index of document and returns predictions for that document for each value of λ.
+loocv.lasso <- function(i){
+  ## Fix the lambdas from the model with all observations
+  las <- glmnet(x =dtm1[-i,], y = label[-i], family='binomial', lambda=lasso$lambda)
+  p.las <- predict(las, newx = dtm1[i,, drop=F], type="response")
+  return(p.las)
+}
+
+# loop through all documents and save predictions / classes.
+tmp         <- lapply(1:nrow(dtm), loocv.lasso)  ## usssing lapply for efficiency
+loocv.pred  <- do.call(rbind, tmp) ## transform to matrix
+loocv.class <- ifelse(loocv.pred >= .5, 1, 0)
+
+# save accuracy scores for each level of lamda
+loocv.acc <- c()
+for (i in 1:ncol(loocv.class)){
+  loocv.acc[i] <- accuracy(loocv.class[,i], label)
+}
+ 
+```
+
+
+*As expected, accuracy is lower than the one obtained out-sample*
+```{r}
+## Print the optimized accuracy
+max(loocv.acc)
+```
+
+```{r}
+## Print the associated lambda
+lambda_min_loocv <- lasso$lambda[which.max(loocv.acc)]
+lambda_min_loocv
+```
+
+
+## 3.1.2
+
+Plot the the estimated accuracy from cross validation  vs the λs
+
+```{r}
+plot(loocv.acc ~ lasso$lambda, xlab="Lambda", ylab="Accuracy", type="l") + 
+  abline(v=lambda_min_loocv, lty="dashed", col="red" )
+```
+
+
+# 3.2 K-fold (10 pts)
+
+Use cv.glmnet to calculate a k-fold cross-validation with nfolds=10
+
+```{r}
+### We need to define a seed
+set.seed(1984)
+cvfit <- cv.glmnet(x =dtm1, y =label, family="binomial", nfolds=10 )
+```
+
+## 3.2.1 
+
+Plot this object and provide an interpretation 
+
+```{r}
+# Plot the object
+plot(cvfit)
+```
+
+*This plots shows how the  goodness-of-fit, measured here by the binomial deviance, decreases as lambda increases. Each point represent the deviance at a value of lambda along its standard deviation. The plot also shows the smallest lambda (dashed line on the left) and the lambda that gives the most regularized model, such that the error is within one standard error of the minimum. In this plot is a bit hard to see how the goodness-of-fit would actually decrease (higher binomial deviance) beyond this lambda. For this reason, I provided a different sequence of lambdas that creates a more informative plot.*
+
+```{r}
+seq_l <- sapply(seq(0,-20, by=-0.5), exp)
+set.seed(1984)
+cvfit2 <- cv.glmnet(x =dtm1, y =label, family="binomial", lambda = seq_l, nfolds=10 )
+```
+
+
+```{r}
+# Plot the object
+plot(cvfit2)
+```
+
+## 3.2.2
+
+Retrieve the λ that minimizes the nfold=10 cross-validation 
+
+```{r}
+lmin <- cvfit$lambda.min
+lmin
+```
+
+Calculate accuracy using this  λ.
+
+```{r}
+# predict
+pred_lasso_k <- predict(lasso, newx = dtm1, s=lmin, type="response") 
+
+# convert to classifications
+class_lasso_k <- ifelse(pred_lasso_k>=0.5, 1, 0)
+
+## 
+accuracy(class_lasso_k, label)
+```
+
+*We get again an accuracy of 1*
+
+# 3.3 (5 pts)
+
+So far you have obtained 3 different values for λ that optimize accuracy. If you would have to pick one to perform a prediction with a test set which one would you pick and why?
+
+*We have obtained 3 values of optimized lambda: 1) in-sample optimal lambda, 2) out-of-sample with LOOCV, and 3) Out-of-sample with K-fold=10. We saw that in-sample lambda and out-of-sample with kfold=10 provide an accuracy of 1. In this case we might prefer to avoid a perfect fit and add some variance to the procedure. For this reason, we might prefer the LOOCV lambda which still provide quite high accuracy but avoids perfect fit.*
+
+# 4. Improve the model (5pts)
+
+These models were actually tested on a test set of N=578, the accuracy was around 87\% which is not bad, but... we always want to do better! Based on your qualitative assestment of the articles provide some guidelines to get a better out-of sample accuracy. For example, think about if you would remove some words and why, or if you could add some extra features to the document term matrix that might improve out-of-sample accuracy. 
+
+*There are many things we could improve in this model. First, we could remove stop words and special characters which seem to be adding a lot of noise to the visualization and the model. Second, we could perform word stemming which is a process that reduces the total number of words by unifying them by a common root. In this case the words "elections" and "elect" would be considered as one. Third, it seems that length of the documents is quite different across fake and non-fake articles, so it might be a good idea to use this length as a predictor. Finally, other interesting predictor could be a sentiment analysis of the documents, since it seems that fake news articles are using words that have some negative connotation. In fact, after performing all these transformations the accuracy in the test set increased from 87\% to almost 98\%.*
+
+
