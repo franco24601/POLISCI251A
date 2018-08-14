@@ -1,0 +1,513 @@
+---
+title: "HW3"
+author: "YOUR NAME HERE"
+date: "July 12, 2018"
+output: html_document
+---
+
+**Section: Write the name of your TA here**
+
+**Collaborators: If you worked with someone in this assignment, write their names here**
+
+**Due: Fri July 20th at midnight**
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	message = T,
+	warning = F
+)
+```
+
+In this homework assignment we will use linear and logistic regression to perform *supervised learning* on text documents.
+
+Supervised learning methods are methods for classifying observations into a pre-determined set of categories. When applied to text, the goal of supervised learning is to classify a collection of documents into categories. For example, we might want to know if tweets are positive or negative, if a speech is liberal or conservative, or if a conversation is about politics or not. We could perform the analysis by hand, but that is often cumbersome and time consuming. Supervised learning methods subsidize hand coding and reduce the cost of analyzing text documents.
+
+Supervised learning methods begin just like traditional hand coding classification. Researchers have a set of predetermined categories and then they (or research assistants) place a randomly selected sample of documents into those categories. This constitutes a *training set* that we will use to train an algorithm for classification. That is, the hand coding decisions will be our *dependent variable*. We will also refer to the hand classification decision as the *labels* for the documents.
+
+To use the hand coded documents for classification we need to convert the texts to data. To do this, we represent the texts as a count vector. We will describe this process later in the course, but the basic intuition is that we count the number of times a set of words occurs across our documents and then use the count of words in each document as a predictor. In other words, the count of each word in each document will constitute our *predictors*.
+
+Using the labels and the word counts, we then use a prediction algorithm to learn the relationship between word counts and labels. For example, you might use logistic regression to regress the hand coded decision on the word counts. We can then use this model to formulate predictions for the unlabeled documents.
+
+The result of the process is that all documents are classified into categories. The benefit is that the automatic classification is much faster than the hand classification.
+
+We can write out supervised learning in the following steps:
+
+1. Hand classify randomly sampled documents into a set of predetermined categories, we will call the classification of each document its label.
+
+2. Divide your data into training and test sets.
+
+2. Represent the documents in the training set as count vectors. Each entry of the count vector will count the number of times that particular word occurred in that document.
+
+3. With the hand-coded documents and the count vectors use a classification algorithm to learn the relationship between the predictors and the labels.
+
+4. Test your model using the test set.
+
+5. Finally, the relationship is used to classify the unlabeled documents.
+
+
+# Credit Claiming in Congressional Texts
+
+In the book *The Impression of Influence*, Grimmer, Westwood, and Messing analyze the rate members of Congress claim credit for government spending in their press releases. Members of Congress issue a lot of press releases: from 2005 to 2010, House members issues nearly *170,000* press releases.
+
+Given that it would be hard to analyze such a large collection by hand, GWM decided to use supervised learning methods. They hired a team of Stanford undergraduates to classify a random sample of 800 press releases as credit claiming (y=1) or not (y=0). They then represented the texts as a count vector.
+
+The object `CreditClaim.RData` contains the list `credit_claim`. The first element of this list is the count vector representation of the documents (labeled `x`, sometimes called a *document term matrix*) and the second element are the labels (`y`).
+
+## 1. Load your data (10 points)
+
+To get started, load `CreditClaim.RData` into R. Create an object `dtm` that holds the document term matrix. Create an object `y` that contains the labels.
+
+```{r}
+#set up
+## Start with a clean environment
+rm(list=ls())
+## Set your workind directory
+setwd("C:/Users/Edgar/Dropbox/PhD/5_year/summer/ML_class/Homework/HW3/")
+
+# load data using the function 'load(fileName)'
+load("CreditClaim.RData")
+
+# Explore which class of object is credit_claim using the function class
+class(credit_claim)
+```
+
+
+**NOTE: ** *'credit_claim' is a list object. Loosely speaking, a list is a vector where each element can be a different type. For example: the first element could be a numeric vector, the second element could be a string vector, the third element a matrix, and the fourth element could be a function. To practice, try the following code to create your own list*
+
+```{r}
+## Create a list
+a_list <- list(
+          c(1,1,2,5,14), # first element: a numeric vector
+          c("Mon", "Tue", "Wed"), # second element: a string vector
+          matrix(c(3,-8,1,-3), nrow=2), # third element: a matrix
+          asin # fourth element: a function
+          
+)
+a_list
+```
+
+### 1.1 Retrieve dtm and labels (10 points)
+
+'credit_claim' hast two elements:
+
+- x: a numeric matrix containing the word count in each document
+
+- y: the labels
+
+Let's separate these two elements
+
+```{r}
+# separate DTM and labels
+# 1. create a object called 'dtm' with the x matrix inside credit_claim. 
+# Hint: To retrieve the x matrix use '$'. Then transform this matrix to a data frame using:
+# as.data.frame()
+dtm <- as.data.frame(credit_claim$x)
+#2. Retrieve the y vector from credit_claim
+# Hint: Use '$'
+# Note: since this is a vector there is no need to do any further transformation
+y <- credit_claim$y
+```
+
+
+Open your 'dtm' data frame using 'View(). Note that each row is a specific document and each column is a word. The number in each cell represent how many times each word appears in that document. 
+
+How many documents classified as credit claiming? *Hint: use table(your_label)*
+
+```{r}
+### YOUR CODE HERE
+table(y)
+```
+
+
+## 2. Identify common words (15 points)
+
+### 2.1 (5 points)
+Let's identify the twenty words that are the most prevalent (occur most often) across the documents. The first step is to create a vector that contains the total number of times that a word appears across all documents. To get that vector we use the function 'colSums':
+
+```{r}
+## Create a vector containing the sum of each column 
+### YOUR CODE HERE
+col_sum_dtm <- colSums(dtm)
+```
+
+### 2.2 (5 points)
+The second step is to sort that vector. Using the function 'sort()', create a new vector that goes from the most used word to the least used. *Hint: check the argument 'decreasing' for this function*
+
+```{r}
+## Create a vector called 'common_words' that goes from the most used to the least used word
+### YOUR CODE HERE
+common_words<- sort(col_sum_dtm, decreasing = T)
+```
+
+### 2.3 (5 points)
+Note that this is a very long vector (length=7587). Those are a lot of words! The problem is that most of this words are only used a few times across documents. We want to use the most common words only. Using your sorted vector and [] create a vector that only contains the twenty words that are the most prevalent (occur most often) across the documents.
+
+```{r}
+# identify top common words
+# Create a vector withtop 20 word by subseting your sorted vector
+### YOUR CODE HERE
+top_20 <- common_words[1:20]
+#print top 20 common words
+### YOUR CODE HERE
+top_20
+```
+
+**Comment briefly: what do you notice about the words?**
+
+
+## 3. Create a data set with top words only (10 points)
+
+Create a new object called  `dtm_20` . This should contain all the documents with only the 20 most common words. To help you with this, as an example, I am going to create an object that contains only the 10 most common words. To do this, I am assuming that you already created the vector called 'common_words' in section 2.2.
+
+
+```{r}
+## Uncomment the following. If you created the object 'common_words' correctly this should produce 
+## a subset of top 10 words only
+# Using the object dtm, select the columns that match the most common words: 
+## Uncomment this:
+#dtm_10 <- dtm[,names(common_words)[1:10]]
+
+# Now, add dependent variable to your new dtm
+## Uncomment this:
+#dtm_10$y <- credit_claim$y 
+```
+
+
+
+```{r}
+# sort the dtm with most common words  -- this makes the next part easier.
+### YOUR CODE HERE
+dtm_20 <- dtm[,names(common_words)[1:20]]
+```
+
+
+Then add a column to your dataframe called `y` that holds the labels for those documents.
+
+```{r}
+# add dependent variable to dtm
+### YOUR CODE HERE
+dtm_20$y <-  credit_claim$y 
+```
+
+
+## 4. Create a trainning and a test set (10 points)
+
+Now, let's divide our data set into a training and a test set with 80 percent of the observations in the training set. *We have done this in class already*. Take a look to our class code and follow these steps. 
+
+```{r}
+## 1. Set your seed to 200
+set.seed(200)
+
+## 2.Using the function sample() create a vector size 80% of your dataframe with different row numbers
+## Take a look to sample() in the help window
+## as x use the number of raws of rawvars
+## as size use the 80% of the number of raws of rawvars
+## NOTE: There is a small issue here: the 80% of 797 is 637.6!!
+## To fix this we are going to round this number. To do this, simply wrap the size argument like this:
+## round(nrow(dtm_20)*.8)
+## Set replace as FALSE 
+train_r <-  sample( nrow(dtm_20), size=round(nrow(dtm_20)*.8), replace=F)
+
+## 3. Now, using this vector and [,] create and object called 'dtm_20_train'
+dtm_20_train <- dtm_20[train_r,] 
+
+## 4. Now, using the complement of this vector and [,] create and object called 'dtm_20_test'
+## Hint: Use - to retrieve the complement
+dtm_20_test <- dtm_20[-train_r,]
+```
+
+
+## 5. Prediction using LPM and GLM (15 points)
+
+### 5.1 (5 points)
+
+We are going to predict the label using the **training set** that you created above. Print a summary for all  models.
+
+a) Predict the credit claiming label with the training set (dtm_20_train), using a linear probability model. Call this `model_1`
+
+b) Predict the credit claiming label with the training set (dtm_20_train), using a logistic regression. Call this `model_2`
+
+
+*Hint: You can regress a label against all the elements of a data frame with this shorcut: lm(y~., data=your_data). Here, the dot simply tells R to use all the variables in the specified data. You can use this shortcut for lm or glm*
+
+
+*NOTE: You might get the warning 'glm.fit: fitted probabilities numerically 0 or 1 occurred'. If so, don't worry about this right now. This wouldn't affect the next steps*
+
+```{r}
+# model 1: Use lm to create a LPM
+### YOUR CODE HERE
+model_1 <- lm(y ~ ., data = dtm_20_train )
+## Print summary
+summary(model_1)
+
+# model 2: Use glm and the argument family=binomial to create a logistic model
+### YOUR CODE HERE
+model_2<- glm(y ~ ., data = dtm_20_train , family = binomial)
+# Print summary
+summary(model_2)
+```
+
+### 5.2 Predict in-sample (5 points)
+
+Now, let's create a prediction in-sample. That is, using our training set. To do this, simply retrieve the fitted values from each model
+
+*Hint: your_model$fitted.values*
+
+```{r}
+### Predict with model 1
+### YOUR CODE HERE
+model1_fit <- model_1$fitted.values
+### Predict with model 2
+### YOUR CODE HERE
+model2_fit <- model_2$fitted.values
+```
+
+### 5.3 Predict out-of-sample (5 points)
+
+By using the test set we are going to create predictions out-of-sample. Here, we need to use the 'predict()' function and specify the newdata argument as 'newdata=dtm_20_test'. Also, note that for your predictions using the glm model you need an additional argument because for a binomial model the default predictions are of log-odds (probabilities on logit scale) and type = "response" gives the predicted probabilities. 
+
+*NOTE: You might get the warning 'prediction from a rank-deficient fit may be misleadingprediction from a rank-deficient fit may be misleading'. If so, don't worry about this right now. This wouldn't affect the next steps*
+
+```{r}
+### Predict out sample with model 1
+### YOUR CODE HERE
+model1_fit_out <- predict(model_1, newdata=dtm_20_test)
+### Predict out sample with model 2. Don't forget to set type="response"
+### YOUR CODE HERE
+model2_fit_out <- predict(model_2, newdata=dtm_20_test, type="response")
+```
+
+
+## 6. Plots (5 points)
+
+Create a plot of the in-sample predictions of model 1 (LPM) against the in-sample predictions for model 2 (GLM). Briefly, comment the relationship of these two predictions in this plot. 
+
+```{r}
+### YOUR CODE HERE
+plot(model1_fit ~ model2_fit, xlab="GLM predictions", ylab="LPM predictions", pch=20) +
+abline(h=0, v=0) + abline(h=1,v=1)
+```
+
+**Answer: Although both models produce similar predicted probabilities around p=0.5, the linear model produces predicted probabilities outside the range (0,1) whereas the lostic model produces probabilites between 0 and 1.  **
+
+
+## 7. Confusion Matrix (15 points )
+
+### 7.1 Classify (5 points)
+
+Let's create the following tables of false/true positives/negatives (also called confusion matrices):
+
+a) A table using your predictions with the training set and the LPM model
+
+b) A table using your predictions with the training set and the logistic model
+
+c) A table using your predictions with the test set and the LPM model
+
+d) A table using your predictions with the test set and the logistic model
+
+Notice that right now each prediction is a probability. To actually compare this with a label we need to get similar values, i.e. ones and zeroes. We are going to use a threshold of 0.5 to classify each prediction as credit claiming or not. (NB: values of 0.5 or above should be classified as a `1`).
+
+To do this we are going to use the function 'ifelse()'. Take a look to this function in the help window. Using this function and each of the four predictions created in section 5, create new vectors containing only ones and zeroes.
+
+Note that:
+
+- A value is a true positive if the label=1 and the prediction=1 
+
+- A value is a true negative if the label=0 and the prediction=0
+
+- A value is a false positive if the label=0 and the prediction=1 
+
+- A value is a false negative if the label=1 and the prediction=0
+
+
+*Hint: An example of how to use this function: ifelse(pred>=0.5,1,0)*
+
+```{r}
+### Model 1 classification in-sample
+### YOUR CODE HERE
+model1_clas_train <- ifelse(model1_fit >=0.5,1,0)
+
+### Model 2 classification in-sample
+### YOUR CODE HERE
+model2_clas_train <- ifelse(model2_fit >=0.5,1,0)
+
+### Model 1 classification out-of-sample
+### YOUR CODE HERE
+model1_clas_test <- ifelse(model1_fit_out >=0.5,1,0)
+
+### Model 2 classification out-of-sample
+### YOUR CODE HERE
+model2_clas_test <- ifelse(model2_fit_out >=0.5,1,0)
+
+```
+
+### 7.2 Create False/True Negatives/Positives tables (10 points)
+
+Using the function 'table()' create: 
+
+a) A confusion matrix using your predictions with the training set and the LPM model
+
+*Hint: table(original_labels, your_classification)*
+
+```{r}
+## YOUR CODE HERE
+table_train_lpm <- table(dtm_20_train$y, model1_clas_train)
+table_train_lpm 
+```
+
+Report the number of:
+
+*True positives:* 40
+*True negatives:* 467
+*False positives:* 10
+*False negatives:* 121
+
+b) A confusion matrix using your predictions with the training set and the logistic model
+
+
+```{r}
+## YOUR CODE HERE
+table_train_glm<- table(dtm_20_train$y, model2_clas_train)
+table_train_glm
+```
+
+Report the number of:
+
+*True positives:* 67
+*True negatives:* 456
+*False positives:* 21
+*False negatives:* 94
+
+c) A confusion matrix using your predictions with the test set and the LPM model
+
+
+```{r}
+### YOUR CODE HERE
+table_test_lpm <- table(dtm_20_test$y, model1_clas_test)
+table_test_lpm
+```
+
+Report the number of:
+
+*True positives:* 13
+*True negatives:* 110
+*False positives:* 4
+*False negatives:* 32
+
+
+d) A confusion matrix using your predictions with the test label and the logistic model
+
+```{r}
+## YOUR CODE HERE
+table_test_glm <- table(dtm_20_test$y, model2_clas_test)
+table_test_glm 
+```
+
+Report the number of:
+
+*True positives:* 22
+*True negatives:* 107
+*False positives:* 7
+*False negatives:* 23
+
+
+## 8. Performance measures (20 points)
+
+Provide the accuracy, precision, recall and f-score for each model. Compare the in-sample and out-of-sample performance across models. Briefly, comment: Which models perform best for each performance metric?
+
+- Accuracy is the ratio of correct predictions (both positive and negative) to all predictions. The formula for accuracy is:
+$$Accuracy=\dfrac{TP + TN}{TP+TN+FP+FN}$$
+
+- Precision measures the accuracy of the classifier when it predicts an example to be positive. The formula for precision is:
+$$Precision=\dfrac{TP}{TP+FP}$$
+- Recall measures the ability of the classifier to find positive examples. The formula for recall is:
+$$Recall=\dfrac{TP}{TP+FN}$$
+
+- F-score is the harmonic mean of precision and recall. The formula for F-score is:
+$$F=\dfrac{2*Precision*Recall}{Precision+Recall}$$
+
+
+**NOTE: If you create your own functions for each measure instead of calculating each of them separately you could get up to 10 bonus points. To get full points your functions should be well commented and with correct decomposition**
+
+```{r}
+### The following functions take a table of true/false positives/negatives as argument and calculate:
+### Accuracy : tp + tn / all observations
+### Precision: tp / (tp + fp)
+### Recall: tp / (tp+fn)
+
+### Acuracy
+accuracy <- function( tab ){
+                  numerator      <-  tab[1,1] + tab[2,2] # tp+tn
+                  denominator    <-  sum(tab) # all observations
+                  result         <-  round(numerator/denominator,4)
+                  return(result) 
+   
+}
+
+########2) Precision
+precision <- function( tab ){
+  numerator      <-  tab[2,2] #tp
+  denominator    <-  tab[2,2] + tab[1,2] #tp+fp
+  result         <- round(numerator/denominator,4)
+  return(result) 
+  
+}
+
+########3) Recall
+recall <- function( tab ){
+  numerator      <-  tab[2,2] #tp
+  denominator    <-  tab[2,2] + tab[2,1] #tp+fn
+  result         <- round(numerator/denominator,4)
+  return(result) 
+  
+}
+
+########3) Fscore
+f_score <- function(tab){
+       numerator <- 2*precision(tab)*recall(tab)
+       denominator <- precision(tab)+recall(tab)
+       result <- round(numerator/denominator,4)
+       return(result)
+    }
+
+```
+
+### 8.1 Measures for in-sample predictions and LPM (5 points)
+
+```{r}
+print(paste("Accuracy: ", accuracy(table_train_lpm )))
+print(paste("Precision: ", precision(table_train_lpm )))
+print(paste("Recall: " , recall(table_train_lpm )))
+print(paste("F-score: " , f_score(table_train_lpm )))
+```
+
+### 8.2 Measures for in-sample predictions and GLM (5 points)
+
+```{r}
+print(paste("Accuracy: ", accuracy(table_train_glm)))
+print(paste("Precision: ", precision(table_train_glm )))
+print(paste("Recall: " , recall(table_train_glm )))
+print(paste("F-score: " , f_score(table_train_glm )))
+```
+
+### 8.3 Measures for out-of-sample predictions and LPM (5 points)
+
+```{r}
+print(paste("Accuracy: ", accuracy(table_test_lpm )))
+print(paste("Precision: ", precision(table_test_lpm )))
+print(paste("Recall: " , recall(table_test_lpm )))
+print(paste("F-score: " , f_score(table_test_lpm )))
+```
+
+### 8.4 Measures for out-of-sample predictions and GLM (5 points)
+
+```{r}
+print(paste("Accuracy: ", accuracy(table_test_glm)))
+print(paste("Precision: ", precision(table_test_glm )))
+print(paste("Recall: " , recall(table_test_glm )))
+print(paste("F-score: " , f_score(table_test_glm )))
+
+```
+
+**In this case we can see that the logistic model performs better than the linear model in terms of accuracy for both in-sample and out-of-sample measures. Although the LPM performs better in terms of precision, the logistic model outperforms in terms of recall. Since we are interested in calculating the rates of credit claiming, we might want to look at a combination of precsion and recall, in this case, the F-score. Over all, the logistic model perform better.  **
+
